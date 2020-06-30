@@ -1,0 +1,44 @@
+Java知识
+android知识
+	android double保留两位小数方法
+	Android四大组件
+	Android assets和raw文件夹
+	开启系统现有相机应用拍摄照片
+	单独的TextView控件设置滚动条
+Java知识
+StackTraceElement
+最近再做一个日志工具类接触到StackTraceElement这个类 作用是获取当前调用的包括方法的类名、方法名、文件名以及调用的行数。 
+获取StackTraceElement的方法有两种，均返回StackTraceElement数组，也就是这个栈的信息。 1、Thread.currentThread().getStackTrace() 2、new Throwable().getStackTrace() 
+这个类可以帮助我们分析整个调用的流程 因为他会打印当前栈中的信息
+StackTraceElement[] element = Thread.currentThread().getStackTrace(); for (int i = 0 ;i < element.length; i++){ Log.i(TAG, "getStackTraceElement: "+i+"\n"+element[i]); } getStackTraceElement: 0 dalvik.system.VMStack.getThreadStackTrace(Native Method) getStackTraceElement: 1 java.lang.Thread.getStackTrace(Thread.java:1566) getStackTraceElement: 2 robin.com.example.mybase.LogUtils.getStackTraceElement(LogUtils.java:136) getStackTraceElement: 3 robin.com.example.mybase.LogUtils.getCallerStackLogTag(LogUtils.java:149) getStackTraceElement: 4 robin.com.example.mybase.LogUtils.i(LogUtils.java:212) getStackTraceElement: 5 robin.com.example.androidfoundation.MainActivity.onCreate(MainActivity.java:43) getStackTraceElement: 6 android.app.Activity.performCreate(Activity.java:6765) getStackTraceElement: 7 android.app.Instrumentation.callActivityOnCreate(Instrumentation.java:1122) getStackTraceElement: 8 android.app.ActivityThread.performLaunchActivity(ActivityThread.java:2829) getStackTraceElement: 9 android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:2941) getStackTraceElement: 10 android.app.ActivityThread.-wrap12(ActivityThread.java) getStackTraceElement: 11 android.app.ActivityThread$H.handleMessage(ActivityThread.java:1645) getStackTraceElement: 12 android.os.Handler.dispatchMessage(Handler.java:110) .... 
+可以看到我们整个方法的调用过程，底部的最先开始调用，可以看到数组下标为5元素是我们调用的函数位置 所以我们可以直接返回这个下标的内容截取响应字段来打印调用位置相关信息比如：
+String callerClazzName = element[5].getClassName(); callerClazzName = callerClazzName.substring(callerClazzName.lastIndexOf(".") + 1); tag = String.format( "%s.%s(L:%d)" ,new Object[] { callerClazzName, caller.getMethodName(),Integer.valueOf(caller.getLineNumber()) }); 
+其次还可以帮助我们确认某些方法是否在特定位置调用 比如一些SDK，会强制要求在某些方法中执行某个方法，例如，必须在Activity.onResume中执行，PVSdk.onResume，如果你之前遇到过某个SDK给你抛了类似的异常，那么它的原理就是这么实现的。
+public class PVSdk { public static void onResume() { StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace(); boolean result = false; for (StackTraceElement stackTraceElement : stackTrace) { String methodName = stackTraceElement.getMethodName(); String className = stackTraceElement.getClassName(); try { boolean assignableFromClass = Class.forName(className).isAssignableFrom(Activity.class); if (assignableFromClass && "onResume".equals(methodName)) { result = true; break; } } catch (ClassNotFoundException e) { // ignored } } if (!result) throw new RuntimeException("PVSdk.onResume must in Activity.onResume"); //do other things } } --------------------- 作者：鸿洋_ 来源：CSDN 原文：https://blog.csdn.net/lmj623565791/article/details/52506545 
+日志工具主要用这个类打印调用所在的类 、函数以及行数等信息这样可以帮助我们快速定位问题
+
+android知识
+android double保留两位小数方法
+1、四舍五入方式 BigDecimal.setScale()方法用于格式化小数点 setScale(2);//表示保留2位小数，默认用四舍五入方式  setScale(2,BigDecimal.ROUND_DOWN);//直接删除多余的小数位  11.116约=11.11 setScale(2,BigDecimal.ROUND_UP);//临近位非零，则直接进位；临近位为零，不进位。11.114约=11.12 setScale(2,BigDecimal.ROUND_HALF_UP);//四舍五入 2.335约=2.33，2.3351约=2.34 setScaler(2,BigDecimal.ROUND_HALF_DOWN);//四舍五入；2.335约=2.33，2.3351约=2.34，11.117约11.12 注：原因是，计算机解析一个浮点数据时，和原始数据有偏差，如： 2.335  =2.33499999999999996447286321199499070644378662109375； 2.3350=2.33499999999999996447286321199499070644378662109375； 2.3351=2.335100000000000175504055732744745910167694091796875 2、截取方式 java.text.DecimalFormat df = new java.text.DecimalFormat("#.00");   df.format(你要格式化的数字); 或者 double d = 3.1415926; String result = String .format("%.2f"，d); 
+Android四大组件
+活动（activity）、服务（service）、广播接收器（broadcast receiver）、内容提供器（content provider）
+Android assets和raw文件夹
+android 播放音频可以用assets中的音频 但是如果是视频需要放在raw文件夹下 assets中的视频无法播放
+开启系统现有相机应用拍摄照片
+需要用的MediaStore.ACTION_IMAGE_CAPTURE作为Intent的action开启Activity即可。但是在使用系统现有相机用用的时候，默认会把图片保存到系统图库的目录下，如果需要指定图片文件的保存路径，需要额外在Intent中设置。
+设置系统现有相机应用的拍摄照片的保存路径，需要用Intent.putExtra()方法通过MediaStore.EXTRA_OUTPUT去设置Intent的额外数据，这里传递的是一个Uri参数，可以是一个文件路径的Uri
+Intent intent=new Intent(); // 指定开启系统相机的Action intent.setAction(MediaStore.ACTION_IMAGE_CAPTURE); intent.addCategory(Intent.CATEGORY_DEFAULT); // 根据文件地址创建文件 File file=new File(FILE_PATH); // 把文件地址转换成Uri格式 Uri uri=Uri.fromFile(file); // 设置系统相机拍摄照片完成后图片文件的存放地址 intent.putExtra(MediaStore.EXTRA_OUTPUT, uri); 
+从系统现有的相机应用中获取拍摄的视频，与获取拍摄的图片过程大致相同，但是它除了可以通过putExtra()设置MediaStore.EXTRA_OUTPUT输出路径外，还可以设置其它值，这里简单介绍一下：
+MediaStore.EXTRA_OUTPUT：设置媒体文件的保存路径。 MediaStore.EXTRA_VIDEO_QUALITY：设置视频录制的质量，0为低质量，1为高质量。 MediaStore.EXTRA_DURATION_LIMIT：设置视频最大允许录制的时长，单位为毫秒。 MediaStore.EXTRA_SIZE_LIMIT：指定视频最大允许的尺寸，单位为byte。 
+单独的TextView控件设置滚动条
+<TextView   android:id="@+id/content"   android:layout_width="fill_parent"   android:layout_height="wrap_content"   android:text="file content is empty!"   android:scrollbars="vertical" android:fadeScrollbars="false"/> 在activity中为这个TextView设置：   mFileContentView = (TextView) findViewById(R.id.content); mFileContentView.setMovementMethod(ScrollingMovementMethod.getInstance()); 
+Android foreground
+foreground 也就是前景色，它与background相对应，顾名思义，它指定的drawable是在view视图的上方绘制的。可用于实现刮卡效果
+SharedPreferences
+SharedPreferences 是线程安全的. 内部由大量 synchronized 关键字保障 但不是进程安全的 第一次 getSharedPreferences 会读取磁盘文件, 后续的 getSharedPreferences 会从内存缓存中获取 
+所有的 getXxx 都是从内存中取的数据
+apply 是同步回写内存, 然后把异步回写磁盘的任务放到一个单线程的队列中等待调度. commit 和前者一样, 只不过要等待异步磁盘任务结束后才返回
+
+https://github.com/Robin132929
+
+
